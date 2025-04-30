@@ -1,0 +1,69 @@
+main {
+    margin: 20px auto; /* Marge extérieure pour centrer le contenu */
+    max-width: 1200px; /* Largeur maximale du contenu */
+    padding: 20px; /* Espacement intérieur */
+}
+
+/* Styles spécifiques pour les sections */
+section {
+    background-color: #f9f9f9; /* Couleur de fond */
+    border-radius: 8px; /* Coins arrondis */
+    padding: 20px; /* Espacement intérieur */
+    margin-bottom: 20px; /* Marge inférieure entre les sections */
+}
+
+/* Styles pour les titres de section */
+h4 {
+    font-size: 24px; /* Taille de la police */
+    color: #333; /* Couleur du texte */
+    margin-bottom: 10px; /* Marge inférieure */
+}
+
+/* Styles pour les descriptions de section */
+p {
+    font-size: 16px; /* Taille de la police */
+    color: #666; /* Couleur du texte */
+    margin-bottom: 0; /* Supprimer la marge inférieure par défaut */
+}
+
+/* Styles pour les liens de catégorie */
+.categorie-link {
+    text-decoration: none; /* Supprimer le soulignement par défaut */
+    color: #007bff; /* Couleur du lien */
+    display: block; /* Afficher en bloc pour occuper tout l'espace disponible */
+    margin-bottom: 10px; /* Marge inférieure entre les liens */
+}
+
+/* Styles pour les liens de catégorie au survol */
+.categorie-link:hover {
+    text-decoration: underline; /* Souligner le lien au survol */
+    color: #0056b3; /* Couleur du lien au survol */
+}
+
+/* Styles pour les formulaires d'ajout */
+form {
+    margin-top: 20px; /* Marge supérieure pour séparer des autres contenus */
+}
+
+/* Styles pour les étiquettes de formulaire */
+label {
+    display: block; /* Afficher en bloc pour occuper tout l'espace disponible */
+    margin-bottom: 5px; /* Marge inférieure entre les étiquettes */
+}
+
+/* Styles pour les boutons de soumission */
+button[type="submit"] {
+    width: 100%; /* Largeur totale du bouton */
+    padding: 10px; /* Espacement intérieur */
+    margin-bottom: 10px; /* Marge inférieure entre les boutons */
+    border: none; /* Supprimer la bordure */
+    border-radius: 5px; /* Coins arrondis */
+    background-color: #007bff; /* Couleur de fond */
+    color: #fff; /* Couleur du texte */
+    cursor: pointer; /* Curseur au survol */
+}
+
+/* Styles pour les boutons de soumission au survol */
+button[type="submit"]:hover {
+    background-color: #0056b3; /* Couleur de fond au survol */
+}
