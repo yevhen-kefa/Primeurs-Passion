@@ -6,13 +6,13 @@ ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 
 require_once "connexion.inc.php";
+require "produit.php";
 
-// Перевірка існування $cnx
 if (!isset($cnx)) {
     die("Connexion à la base de données non établie.");
 }
 
-
+//Delete users
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_user_id'])) {
     $deleteId = intval($_POST['delete_user_id']);
 
@@ -20,6 +20,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_user_id'])) {
         $stmt = $cnx->prepare("DELETE FROM SAE_Client WHERE id_client = ?");
         $stmt->execute([$deleteId]);
     } catch (PDOException $e) {
+    }
+}
+
+//Delete produit
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_product_id'])) {
+    $deleteId = intval($_POST['delete_product_id']);
+
+    try {
+        $stmt = $cnx->prepare("DELETE FROM SAE_Variete WHERE id_variete = ?");
+        $stmt->execute([$deleteId]);
+
+        header("Location: " . $_SERVER['PHP_SELF']);
+        exit;
+    } catch (PDOException $e) {
+        echo "<p style='color:red;'>Erreur lors de la suppression : " . htmlspecialchars($e->getMessage()) . "</p>";
     }
 }
 
@@ -35,7 +50,7 @@ if (!$isAdmin) {
 
 
 
-
+//Get user
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_user'])) {
     $id = $_POST['user_id'];
@@ -83,7 +98,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_user'])) {
             ]);
         }
 
-        // Після оновлення: перенаправлення або flash message
         header("Location: " . $_SERVER['PHP_SELF']);
         exit;
     } catch (PDOException $e) {
@@ -91,6 +105,52 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_user'])) {
     }
 }
 
+
+if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['create_user'])) {
+    $nom = $_POST['nom'];
+    $prenom = $_POST['prenom'];
+    $adresse = $_POST['adresse'];
+    $email = $_POST['email'];
+    $tel = $_POST['telephone']; 
+    $categorie_client = $_POST['categorie_client'];
+    $codeClient = 'C' 
+    . strtoupper(mb_substr($nom, 0, 3)) 
+    . strtoupper(mb_substr($prenom, 0, 3));
+
+    if (empty($_POST['pass'])) {
+        $errorMessage = "Le mot de passe est obligatoire pour créer un utilisateur.";
+    } else {
+        $pass = password_hash($_POST['pass'], PASSWORD_DEFAULT);
+
+        $stmt = $cnx->prepare("SELECT id_client FROM public.sae_client WHERE email = :email");
+        $stmt->execute(['email' => $email]);
+
+        if ($stmt->rowCount() > 0) {
+            $errorMessage = "Cet email est déjà utilisé.";
+        } else {
+            $stmt = $cnx->prepare("
+                INSERT INTO sae_client (code_client,nom, prenom, adresse, email, pass, tel, categorie_client)
+                VALUES (:code_client, :nom, :prenom, :adresse, :email, :pass, :tel, :categorie_client)
+                RETURNING id_client
+            ");
+
+            $stmt->execute([
+                'code_client' => $codeClient,
+                'nom' => $nom,
+                'prenom' => $prenom,
+                'adresse' => $adresse,
+                'email' => $email,
+                'pass' => $pass,
+                'tel' => $tel,
+                'categorie_client' => $categorie_client
+            ]);
+
+            $userId = $stmt->fetchColumn();
+
+            $successMessage = "L'utilisateur a été créé avec succès.";
+        }
+    }
+}
 
 
 ?>
@@ -447,13 +507,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_user'])) {
 
                 <div class="sidebar">
                     <label for="menu-toggle" class="close-btn">✕</label>
-                    <ul>
+                   <ul>
                         <li><a href="index.php">Accueil</a></li>
-                        <li><a href="#">Catégories</a></li>
-                        <li><a href="panier.html">Panier</a></li>
-                        <li><a href="admin.php">Page admin utilisateur</a></li>
-                        <li><a href="admin_loisir.php">Page admin loisir</a></li>
-                        <li><a href="Agenda_globale.php">Calendrier globale</a></li>
+                        <li><a href="categorie.php">Catégories</a></li>
+                        <li><a href="panier.php">Panier</a></li>
+                        <?php if ($isAdmin) : ?>
+                        <li><a href="page_admin.php">Page admin</a></li>
+                        <?php endif; ?>
+                        <li><a href="deconnexion.php">Deconnexion</a></li>
                     </ul>
                 </div>
             </div>
@@ -462,8 +523,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_user'])) {
             <input type="text" placeholder="Recherche..." class="search-bar" />
 
             <div class="icons">
-                <span>👤 Login</span>
-                <span>🛒 Panier</span>
+                <?php if (isset($_SESSION['user_id']) && isset($user)): ?>
+                    <a href="profil.php"><span>👤 <?= htmlspecialchars($user['nom']) ?></span></a>
+                <?php else: ?>
+                    <a href="login.php"><span>👤 Login</span></a>
+                <?php endif; ?>
+                <a href="panier.php"><span>🛒 Panier</span></a>
             </div>
         </div>
     </header>
@@ -477,8 +542,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_user'])) {
         $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
         ?>
 
-        <div class="admin-section">
+       <div class="admin-section">
             <h2>Liste des utilisateurs</h2>
+            <button id="openAddModal" class="btn btn-primary" style="margin-bottom: 15px;">➕ Créer un utilisateur</button>
+
             <div class="admin-content">
                 <table class="admin-table">
                     <thead>
@@ -497,7 +564,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_user'])) {
                             <td><?= htmlspecialchars($user['email']) ?></td>
                             <td>
                                 <button class="btn btn-edit" data-user-id="<?= htmlspecialchars($user['id_client']) ?>">Modifier</button>
-                                 <form method="POST" style="display:inline;" onsubmit="return confirm('Ви впевнені, що хочете видалити цього користувача?');">
+                                 <form method="POST" style="display:inline;" onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer cet utilisateur ?');">
                                     <input type="hidden" name="delete_user_id" value="<?= htmlspecialchars($user['id_client']) ?>">
                                     <button type="submit" class="btn btn-danger btn-delete">Supprimer</button>
                                 </form>
@@ -513,6 +580,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_user'])) {
 
         <div class="admin-section">
             <h2>Liste des produits</h2>
+            <button id="addProductBtn" class="btn" style="margin-top: 20px;">Ajouter un produit</button>
             <div class="admin-content">
                 <table class="admin-table">
                     <thead>
@@ -551,8 +619,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_user'])) {
                                 echo '<td>' . ($produit['prix'] !== null ? htmlspecialchars($produit['prix']) . ' €' : 'N/A') . '</td>';
                                 echo '<td>' . htmlspecialchars($produit['calibre']) . '</td>';
                                 echo '<td>
-                                        <button class="btn">Modifier</button>
-                                        <button class="btn btn-danger">Supprimer</button>
+                                        <button class="btn btn-edit-p">Modifier</button>
+                                         <form method="POST" style="display:inline;" onsubmit="return confirm(\'Êtes-vous sûr de vouloir supprimer ce produit ?\');">
+                                            <input type="hidden" name="delete_product_id" value="' . htmlspecialchars($produit['id_variete']) . '">
+                                            <button type="submit" class="btn btn-danger btn-delete">Supprimer</button>
+                                        </form>
                                       </td>';
                                 echo '</tr>';
                             }
@@ -560,7 +631,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_user'])) {
                         ?>
                     </tbody>
                 </table>
-                <button class="btn" style="margin-top: 20px;">Ajouter un produit</button>
             </div>
         </div>
 
@@ -606,7 +676,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_user'])) {
         </div>
 
          <!-- Modal pour modifier un utilisateur -->
-    <!-- Модальне вікно -->
 <div id="editModal" class="modal">
     <div class="modal-content">
         <span class="close">&times;</span>
@@ -617,7 +686,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_user'])) {
 
             <div class="form-group">
                 <label for="edit_nom">Nom:</label>
-                <input type="text" id="edit_nom" name="nom" required>
+                <input type="text" id="edit_user_nom" name="nom" required>
             </div>
 
             <div class="form-group">
@@ -660,6 +729,136 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_user'])) {
     </div>
 </div>
 
+<div id="addModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>Ajouter un nouvel utilisateur</h2>
+            <form id="addForm" method="POST" enctype="multipart/form-data">
+                <input type="hidden" name="create_user" value="1">
+                
+                <div class="form-group">
+                    <label for="add_nom">Nom:</label>
+                    <input type="text" id="add_nom" name="nom" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="add_prenom">Prénom:</label>
+                    <input type="text" id="add_prenom" name="prenom" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="add_adresse">Adresse:</label>
+                    <input type="text" id="add_adresse" name="adresse" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="add_email">Email:</label>
+                    <input type="email" id="add_email" name="email" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="add_pass">Mot de passe:</label>
+                    <input type="password" id="add_pass" name="pass" required>
+                </div>
+
+                
+                <div class="form-group">
+                    <label for="add_telephone">Téléphone:</label>
+                    <input type="tel" id="add_telephone" name="telephone">
+                </div>
+                
+                
+                <div class="form-group">
+                <label for="edit_categorie">Catégorie Client:</label>
+                <select id="edit_categorie" name="categorie_client" required>
+                    <option value="1">Particulier</option>
+                    <option value="2">Professionnel</option>
+                    <option value="3">VIP</option>
+                    <option value="4">Autre</option>
+                </select>
+            </div>  
+
+                    <div class="form-group">
+                    <label for="add_pass">Mot de passe:</label>
+                    <input type="password" id="add_pass" name="pass" required placeholder="Mot de passe pour le nouvel utilisateur">
+                    </div>
+                
+                <button type="submit" class="submit-btn">Créer l'utilisateur</button>
+            </form>
+        </div>
+    </div>
+<div id="addProductModal" class="modal">
+    <div class="modal-content">
+        <span class="close">&times;</span>
+        <h2>Ajouter un nouveau produit</h2>
+        <form id="addProductForm" method="POST">
+            <input type="hidden" name="create_product" value="1">
+
+            <div class="form-group">
+                <label for="add_nom">Nom du produit:</label>
+                <input type="text" id="add_nom" name="nom" required>
+            </div>
+
+            <div class="form-group">
+                <label for="add_calibre">Calibre:</label>
+                <input type="text" id="add_calibre" name="calibre" required>
+            </div>
+
+            <div class="form-group">
+                <label for="add_prix">Prix (€):</label>
+                <input type="number" id="add_prix" name="prix" min="0" step="1">
+            </div>
+
+            <div class="form-group">
+                <label for="add_id_article">Catégorie:</label>
+                <select id="add_id_article" name="id_article" required>
+                    <option value="1">Fruits</option>
+                    <option value="2">Légumes</option>
+                </select>
+            </div>
+
+            <button type="submit" class="btn">Ajouter</button>
+        </form>
+    </div>
+</div>
+
+<div id="editProductModal" class="modal">
+    <div class="modal-content">
+        <span class="close">&times;</span>
+        <h2>Modifier le produit</h2>
+        <form id="editProductForm" method="POST">
+            <input type="hidden" name="update_product" value="1">
+            <input type="hidden" id="edit_product_id" name="product_id">
+
+            <div class="form-group">
+                <label for="edit_nom">Nom du produit:</label>
+                <input type="text" id="edit_nom" name="nom" required>
+            </div>
+
+            <div class="form-group">
+                <label for="edit_calibre">Calibre:</label>
+                <input type="text" id="edit_calibre" name="calibre" required>
+            </div>
+
+            <div class="form-group">
+                <label for="edit_prix">Prix (€):</label>
+                <input type="number" id="edit_prix" name="prix" min="0" step="1">
+            </div>
+
+            <div class="form-group">
+                <label for="edit_id_article">Catégorie:</label>
+                <select id="edit_id_article" name="id_article" required>
+                    <option value="1">Fruits</option>
+                    <option value="2">Légumes</option>
+                    <!-- Додай свої категорії -->
+                </select>
+            </div>
+
+            <button type="submit" class="btn">Modifier</button>
+        </form>
+    </div>
+</div>
+
 
     </main>
 
@@ -692,5 +891,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_user'])) {
     </footer>
 
 </body>
+<script src="js/add_user.js"></script>
 <script src="js/admin_modal.js"></script>
+<script src="js/produit.js"></script>
+
 </html>

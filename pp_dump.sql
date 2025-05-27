@@ -237,17 +237,50 @@ ALTER SEQUENCE public.sae_colis_id_colis_seq OWNED BY public.sae_colis.id_colis;
 
 
 --
+-- Name: sae_commande_items; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.sae_commande_items (
+    id_item integer NOT NULL,
+    id_commande integer NOT NULL,
+    id_variete integer NOT NULL,
+    quantite integer NOT NULL
+);
+
+
+ALTER TABLE public.sae_commande_items OWNER TO postgres;
+
+--
+-- Name: sae_commande_items_id_item_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+--
+
+CREATE SEQUENCE public.sae_commande_items_id_item_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE public.sae_commande_items_id_item_seq OWNER TO postgres;
+
+--
+-- Name: sae_commande_items_id_item_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
+--
+
+ALTER SEQUENCE public.sae_commande_items_id_item_seq OWNED BY public.sae_commande_items.id_item;
+
+
+--
 -- Name: sae_commandes; Type: TABLE; Schema: public; Owner: postgres
 --
 
 CREATE TABLE public.sae_commandes (
     id_commandes integer NOT NULL,
-    quantite integer NOT NULL,
-    date_livraison date NOT NULL,
     date_enregistrement timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    id_preparateur integer NOT NULL,
-    numero_tournee integer NOT NULL,
-    saisie_par integer NOT NULL
+    id_client integer NOT NULL,
+    date_commande timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 
 
@@ -369,6 +402,43 @@ CREATE TABLE public.sae_historique_prix (
 ALTER TABLE public.sae_historique_prix OWNER TO postgres;
 
 --
+-- Name: sae_panier; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.sae_panier (
+    id_panier integer NOT NULL,
+    id_client integer NOT NULL,
+    id_variete integer NOT NULL,
+    quantite integer DEFAULT 1 NOT NULL,
+    date_ajout timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
+
+
+ALTER TABLE public.sae_panier OWNER TO postgres;
+
+--
+-- Name: sae_panier_id_panier_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+--
+
+CREATE SEQUENCE public.sae_panier_id_panier_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE public.sae_panier_id_panier_seq OWNER TO postgres;
+
+--
+-- Name: sae_panier_id_panier_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
+--
+
+ALTER SEQUENCE public.sae_panier_id_panier_seq OWNED BY public.sae_panier.id_panier;
+
+
+--
 -- Name: sae_produits_commandes; Type: TABLE; Schema: public; Owner: postgres
 --
 
@@ -442,6 +512,13 @@ ALTER TABLE ONLY public.sae_colis ALTER COLUMN id_colis SET DEFAULT nextval('pub
 
 
 --
+-- Name: sae_commande_items id_item; Type: DEFAULT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.sae_commande_items ALTER COLUMN id_item SET DEFAULT nextval('public.sae_commande_items_id_item_seq'::regclass);
+
+
+--
 -- Name: sae_commandes id_commandes; Type: DEFAULT; Schema: public; Owner: postgres
 --
 
@@ -460,6 +537,13 @@ ALTER TABLE ONLY public.sae_employes ALTER COLUMN id_employe SET DEFAULT nextval
 --
 
 ALTER TABLE ONLY public.sae_factures ALTER COLUMN id_facture SET DEFAULT nextval('public.sae_factures_id_facture_seq'::regclass);
+
+
+--
+-- Name: sae_panier id_panier; Type: DEFAULT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.sae_panier ALTER COLUMN id_panier SET DEFAULT nextval('public.sae_panier_id_panier_seq'::regclass);
 
 
 --
@@ -541,13 +625,37 @@ COPY public.sae_colis (id_colis, id_commandes, numero_tournee, id_preparateur, t
 
 
 --
+-- Data for Name: sae_commande_items; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.sae_commande_items (id_item, id_commande, id_variete, quantite) FROM stdin;
+1	4	1	4
+2	4	2	3
+3	4	3	2
+4	5	7	3
+5	6	2	1
+6	6	16	1
+7	6	9	3
+8	7	1	1
+9	7	2	2
+10	7	7	1
+11	7	9	1
+12	7	3	5
+\.
+
+
+--
 -- Data for Name: sae_commandes; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
-COPY public.sae_commandes (id_commandes, quantite, date_livraison, date_enregistrement, id_preparateur, numero_tournee, saisie_par) FROM stdin;
-1	5	2024-01-05	2025-01-05 21:09:44	1	3	4
-2	10	2024-01-06	2025-01-05 21:09:44	2	5	4
-3	2	2024-01-07	2025-01-05 21:09:44	3	1	4
+COPY public.sae_commandes (id_commandes, date_enregistrement, id_client, date_commande) FROM stdin;
+1	2025-01-05 21:09:44	1	2025-05-26 12:55:55.78813
+2	2025-01-05 21:09:44	1	2025-05-26 12:55:55.78813
+3	2025-01-05 21:09:44	1	2025-05-26 12:55:55.78813
+4	2025-05-26 12:58:12.227954	7	2025-05-26 12:58:12.227954
+5	2025-05-26 13:05:36.567619	8	2025-05-26 13:05:36.567619
+6	2025-05-26 15:09:21.967417	7	2025-05-26 15:09:21.967417
+7	2025-05-26 16:05:38.635012	7	2025-05-26 16:05:38.635012
 \.
 
 
@@ -582,6 +690,14 @@ COPY public.sae_historique_prix (id_variete, code_client, date_debut, date_fin, 
 1	3	2024-01-01	2024-03-31	140
 2	4	2024-01-01	2024-03-31	175
 6	2	2024-01-01	2024-03-31	240
+\.
+
+
+--
+-- Data for Name: sae_panier; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.sae_panier (id_panier, id_client, id_variete, quantite, date_ajout) FROM stdin;
 \.
 
 
@@ -674,10 +790,17 @@ SELECT pg_catalog.setval('public.sae_colis_id_colis_seq', 3, true);
 
 
 --
+-- Name: sae_commande_items_id_item_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
+--
+
+SELECT pg_catalog.setval('public.sae_commande_items_id_item_seq', 12, true);
+
+
+--
 -- Name: sae_commandes_id_commandes_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
 
-SELECT pg_catalog.setval('public.sae_commandes_id_commandes_seq', 3, true);
+SELECT pg_catalog.setval('public.sae_commandes_id_commandes_seq', 7, true);
 
 
 --
@@ -692,6 +815,13 @@ SELECT pg_catalog.setval('public.sae_employes_id_employe_seq', 4, true);
 --
 
 SELECT pg_catalog.setval('public.sae_factures_id_facture_seq', 3, true);
+
+
+--
+-- Name: sae_panier_id_panier_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
+--
+
+SELECT pg_catalog.setval('public.sae_panier_id_panier_seq', 17, true);
 
 
 --
@@ -758,6 +888,14 @@ ALTER TABLE ONLY public.sae_colis
 
 
 --
+-- Name: sae_commande_items sae_commande_items_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.sae_commande_items
+    ADD CONSTRAINT sae_commande_items_pkey PRIMARY KEY (id_item);
+
+
+--
 -- Name: sae_commandes sae_commandes_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -779,6 +917,14 @@ ALTER TABLE ONLY public.sae_employes
 
 ALTER TABLE ONLY public.sae_factures
     ADD CONSTRAINT sae_factures_pkey PRIMARY KEY (id_facture);
+
+
+--
+-- Name: sae_panier sae_panier_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.sae_panier
+    ADD CONSTRAINT sae_panier_pkey PRIMARY KEY (id_panier);
 
 
 --
@@ -830,19 +976,11 @@ ALTER TABLE ONLY public.sae_colis
 
 
 --
--- Name: sae_commandes fk_commandes_preparateur; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: sae_commandes fk_commandes_client; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
 ALTER TABLE ONLY public.sae_commandes
-    ADD CONSTRAINT fk_commandes_preparateur FOREIGN KEY (id_preparateur) REFERENCES public.sae_employes(id_employe);
-
-
---
--- Name: sae_commandes fk_commandes_saisie; Type: FK CONSTRAINT; Schema: public; Owner: postgres
---
-
-ALTER TABLE ONLY public.sae_commandes
-    ADD CONSTRAINT fk_commandes_saisie FOREIGN KEY (saisie_par) REFERENCES public.sae_employes(id_employe);
+    ADD CONSTRAINT fk_commandes_client FOREIGN KEY (id_client) REFERENCES public.sae_client(id_client);
 
 
 --
@@ -870,6 +1008,22 @@ ALTER TABLE ONLY public.sae_historique_prix
 
 
 --
+-- Name: sae_panier fk_panier_client; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.sae_panier
+    ADD CONSTRAINT fk_panier_client FOREIGN KEY (id_client) REFERENCES public.sae_client(id_client) ON DELETE CASCADE;
+
+
+--
+-- Name: sae_panier fk_panier_variete; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.sae_panier
+    ADD CONSTRAINT fk_panier_variete FOREIGN KEY (id_variete) REFERENCES public.sae_variete(id_variete) ON DELETE CASCADE;
+
+
+--
 -- Name: sae_produits_commandes fk_produits_commandes; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -891,6 +1045,22 @@ ALTER TABLE ONLY public.sae_produits_commandes
 
 ALTER TABLE ONLY public.sae_variete
     ADD CONSTRAINT fk_variete_article FOREIGN KEY (id_article) REFERENCES public.sae_article(id_article);
+
+
+--
+-- Name: sae_commande_items sae_commande_items_id_commande_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.sae_commande_items
+    ADD CONSTRAINT sae_commande_items_id_commande_fkey FOREIGN KEY (id_commande) REFERENCES public.sae_commandes(id_commandes) ON DELETE CASCADE;
+
+
+--
+-- Name: sae_commande_items sae_commande_items_id_variete_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.sae_commande_items
+    ADD CONSTRAINT sae_commande_items_id_variete_fkey FOREIGN KEY (id_variete) REFERENCES public.sae_variete(id_variete);
 
 
 --

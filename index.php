@@ -4,7 +4,6 @@ session_start();
 
 require_once "connexion.inc.php";
 
-// Завантаження даних користувача з таблиці SAE_Client
 $stmt = $cnx->prepare("SELECT * FROM SAE_Client WHERE id_client = :id");
 $stmt->execute(['id' => $_SESSION['user_id']]);
 $user = $stmt->fetch();
@@ -65,13 +64,12 @@ ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 
-// Отримуємо всі категорії з SAE_Article
 $stmt_cat = $cnx->prepare("SELECT id_article, categorie FROM SAE_Article");
 $stmt_cat->execute();
 $categories = $stmt_cat->fetchAll(PDO::FETCH_ASSOC);
 
 foreach ($categories as $cat):
-    $id_article = $cat['id_article'];  // маленькі літери
+    $id_article = $cat['id_article'];  
     $categorie = $cat['categorie'];
 
     $stmt_var = $cnx->prepare("SELECT * FROM SAE_Variete WHERE id_article = :id_article");
@@ -88,7 +86,13 @@ foreach ($categories as $cat):
                     <div class="product-card">
                         <img src="img_pp/tomates.jpg" alt="<?= htmlspecialchars($product['nom']) ?>" />
                         <p class="name"><?= htmlspecialchars($product['nom']) ?></p>
-                        <p class="panier">+ au panier</p>
+                        <p 
+                            class="panier btn-add-cart" 
+                            data-variete-id="<?= htmlspecialchars($product['id_variete']) ?>"
+                            style="cursor:pointer;"
+                        >
+                        <?= !empty($product['in_cart']) ? 'dans panier' : '+ au panier' ?>
+                        </p>
                         <button>Acheter</button>
                         <p>Calibre: <?= htmlspecialchars($product['calibre']) ?></p>
                         <p>Prix: <?= $product['prix'] !== null ? $product['prix'] . ' €' : 'N/A' ?></p>
@@ -130,5 +134,35 @@ foreach ($categories as $cat):
     </footer>
 
 </body>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const panierButtons = document.querySelectorAll('.btn-add-cart');
+
+    panierButtons.forEach(button => {
+        button.addEventListener('click', function () {
+            const varieteId = this.dataset.varieteId;
+
+            fetch('add_to_panier.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: 'id_variete=' + encodeURIComponent(varieteId)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    this.textContent = 'dans panier';
+                } else {
+                    alert(data.message || 'Erreur lors de l\'ajout au panier');
+                }
+            })
+            .catch(error => {
+                console.error('Erreur AJAX:', error);
+            });
+        });
+    });
+});
+</script>
 
 </html>

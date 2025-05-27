@@ -3,14 +3,20 @@ session_start();
 
 require_once "connexion.inc.php";
 
-// Завантаження даних користувача з таблиці SAE_Client
+if (!isset($_SESSION['user_id'])) {
+    header("Location: login.php");
+    exit;
+}
+
+$idClient = $_SESSION['user_id'];
+
+
 $stmt = $cnx->prepare("SELECT * FROM SAE_Client WHERE id_client = :id");
 $stmt->execute(['id' => $_SESSION['user_id']]);
 $user = $stmt->fetch();
 
 $isAdmin = $_SESSION['is_admin'] ?? false;
 
-// Обробка оновлення профілю
 if ($_POST && isset($_POST['update_profile'])) {
     $nom = $_POST['nom'] ?? '';
     $prenom = $_POST['prenom'] ?? '';
@@ -30,12 +36,21 @@ if ($_POST && isset($_POST['update_profile'])) {
         'id' => $_SESSION['user_id']
     ]);
     
-    // Оновлення даних користувача
     $stmt->execute(['id' => $_SESSION['user_id']]);
     $user = $stmt->fetch();
     
     $success_message = "Profil mis à jour avec succès!";
 }
+
+$stmtOrders = $cnx->prepare("
+    SELECT id_commandes, date_commande 
+    FROM sae_commandes 
+    WHERE id_client = :id_client 
+    ORDER BY date_commande DESC
+");
+$stmtOrders->execute([':id_client' => $idClient]);
+$orders = $stmtOrders->fetchAll(PDO::FETCH_ASSOC);
+
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -352,24 +367,51 @@ if ($_POST && isset($_POST['update_profile'])) {
                 </div>
 
                 <div id="commandes" class="form-section">
-                    <h3>Historique des commandes</h3>
-                    <div class="orders-list">
-                        <div class="order-item">
-                            <div>
-                                <div class="order-date">Commande #001 - 15/01/2025</div>
-                                <div>Fraises, Tomates, Pommes - 45.50€</div>
-                            </div>
-                            <div class="order-status">Livrée</div>
+    <h3>Historique des commandes</h3>
+
+    <?php if (empty($orders)): ?>
+        <p>Aucun commande trouvée.</p>
+    <?php else: ?>
+        <div class="orders-list">
+            <?php foreach ($orders as $order): ?>
+                <?php
+                    // Для кожного замовлення вибираємо товари + назви + ціну + кількість
+                    $stmtItems = $cnx->prepare("
+                        SELECT v.nom, v.prix, ci.quantite 
+                        FROM sae_commande_items ci
+                        JOIN sae_variete v ON ci.id_variete = v.id_variete
+                        WHERE ci.id_commande = :id_commande
+                    ");
+                    $stmtItems->execute([':id_commande' => $order['id_commandes']]);
+                    $items = $stmtItems->fetchAll(PDO::FETCH_ASSOC);
+
+                    // Рахуємо загальну суму
+                    $total = 0;
+                    $itemNames = [];
+                    foreach ($items as $item) {
+                        $total += $item['prix'] * $item['quantite'];
+                        $itemNames[] = $item['nom'];
+                    }
+                ?>
+
+                <div class="order-item">
+                    <div>
+                        <div class="order-date">
+                            Commande #<?= htmlspecialchars($order['id_commandes']) ?> - 
+                            <?= date('d/m/Y', strtotime($order['date_commande'])) ?>
                         </div>
-                        <div class="order-item">
-                            <div>
-                                <div class="order-date">Commande #002 - 20/01/2025</div>
-                                <div>Légumes variés - 32.00€</div>
-                            </div>
-                            <div class="order-status">En cours</div>
+                        <div>
+                            <?= htmlspecialchars(implode(', ', $itemNames)) ?> - 
+                            <?= number_format($total, 2) ?>€
                         </div>
                     </div>
+                    <!-- Статус замовлення (тут можна підставити з БД, якщо є) -->
+                    <div class="order-status">Livrée</div>
                 </div>
+            <?php endforeach; ?>
+        </div>
+    <?php endif; ?>
+</div>
 
                 <div id="parametres" class="form-section">
                     <h3>Paramètres du compte</h3>

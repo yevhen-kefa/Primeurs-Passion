@@ -1,3 +1,23 @@
+<?php
+session_start();
+
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+
+require_once "connexion.inc.php";
+
+if (!isset($cnx)) {
+    die("Connexion à la base de données non établie.");
+}
+$isAdmin = $_SESSION['is_admin'] ?? false;
+$stmt = $cnx->prepare("SELECT * FROM SAE_Client WHERE id_client = :id");
+$stmt->execute(['id' => $_SESSION['user_id']]);
+$user = $stmt->fetch();
+$stmt = $cnx->query("SELECT id_article, categorie FROM sae_article ORDER BY categorie");
+$categories = $stmt->fetchAll(PDO::FETCH_ASSOC);
+?>
+
 <!DOCTYPE html>
 <html lang="fr">
 
@@ -112,100 +132,37 @@
 
             <input type="text" placeholder="Recherche..." class="search-bar" />
 
-            <div class="icons">
-                <a href="profil.php"><span>👤 Профіль</span></a>
-                <span>🛒 Panier</span>
+              <div class="icons">
+                <?php if (isset($_SESSION['user_id']) && isset($user)): ?>
+                    <a href="profil.php"><span>👤 <?= htmlspecialchars($user['nom']) ?></span></a>
+                <?php else: ?>
+                    <a href="login.php"><span>👤 Login</span></a>
+                <?php endif; ?>
+                <a href="panier.php"><span>🛒 Panier</span></a>
             </div>
         </div>
     </header>
 
     <main>
         <div class="categories-container">
-            <h1 class="page-title">Nos Catégories</h1>
-            <p class="page-subtitle">Découvrez notre large gamme de produits frais et bio</p>
+    <h1 class="page-title">Nos Catégories</h1>
+    <p class="page-subtitle">Découvrez notre large gamme de produits frais et bio</p>
 
-            <div class="categories-grid">
-                <div class="category-card">
-                    <a href="category.php?cat=legumes">
-                        <div class="category-icon">🥕</div>
-                        <div class="category-name">Légumes</div>
-                        <div class="category-description">
-                            Légumes frais de saison, cultivés localement avec soin et passion
-                        </div>
-                    </a>
-                </div>
+    <div class="categories-grid">
+        <?php foreach ($categories as $cat): ?>
+            <div class="category-card">
+                <a href="categorie_concret.php?cat=<?= urlencode($cat['categorie']) ?>">
 
-                <div class="category-card">
-                    <a href="category.php?cat=fruits">
-                        <div class="category-icon">🍎</div>
-                        <div class="category-name">Fruits</div>
-                        <div class="category-description">
-                            Fruits juteux et savoureux, récoltés à maturité pour un goût optimal
-                        </div>
-                    </a>
-                </div>
-
-                <div class="category-card">
-                    <a href="category.php?cat=exotiques">
-                        <div class="category-icon">🥭</div>
-                        <div class="category-name">Fruits Exotiques</div>
-                        <div class="category-description">
-                            Découvrez des saveurs d'ailleurs avec notre sélection de fruits exotiques
-                        </div>
-                    </a>
-                </div>
-
-                <div class="category-card">
-                    <a href="category.php?cat=herbes">
-                        <div class="category-icon">🌿</div>
-                        <div class="category-name">Herbes Aromatiques</div>
-                        <div class="category-description">
-                            Herbes fraîches pour parfumer vos plats et sublimer vos recettes
-                        </div>
-                    </a>
-                </div>
-
-                <div class="category-card">
-                    <a href="category.php?cat=champignons">
-                        <div class="category-icon">🍄</div>
-                        <div class="category-name">Champignons</div>
-                        <div class="category-description">
-                            Champignons frais et variés pour enrichir vos préparations culinaires
-                        </div>
-                    </a>
-                </div>
-
-                <div class="category-card">
-                    <a href="category.php?cat=bio">
-                        <div class="category-icon">🌱</div>
-                        <div class="category-name">Produits Bio</div>
-                        <div class="category-description">
-                            Sélection exclusive de produits certifiés biologiques et écologiques
-                        </div>
-                    </a>
-                </div>
-
-                <div class="category-card">
-                    <a href="category.php?cat=saison">
-                        <div class="category-icon">🍂</div>
-                        <div class="category-name">Produits de Saison</div>
-                        <div class="category-description">
-                            Produits frais selon les saisons pour respecter les cycles naturels
-                        </div>
-                    </a>
-                </div>
-
-                <div class="category-card">
-                    <a href="category.php?cat=locaux">
-                        <div class="category-icon">🏡</div>
-                        <div class="category-name">Produits Locaux</div>
-                        <div class="category-description">
-                            Produits cultivés dans notre région pour soutenir l'économie locale
-                        </div>
-                    </a>
-                </div>
+                    <div class="category-icon">🍎</div> 
+                    <div class="category-name"><?= htmlspecialchars($cat['categorie']) ?></div>
+                    <div class="category-description">
+                        Produits dans la catégorie <?= htmlspecialchars($cat['categorie']) ?>
+                    </div>
+                </a>
             </div>
-        </div>
+        <?php endforeach; ?>
+    </div>
+</div>
     </main>
 
     <footer>

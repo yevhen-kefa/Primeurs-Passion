@@ -1,12 +1,21 @@
 <?php
 session_start();
+
 ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 
 require_once "connexion.inc.php";
-if (!isset($_SESSION['user_id'])) {
-    header("Location: login.php");
+
+if (!isset($cnx)) {
+    die("Connexion à la base de données non établie.");
+}
+$isAdmin = $_SESSION['is_admin'] ?? false;
+
+$category = $_GET['cat'] ?? null;
+
+if (!$category) {
+    echo "<p>Catégorie invalide.</p>";
     exit;
 }
 
@@ -15,27 +24,26 @@ $stmt = $cnx->prepare("SELECT * FROM SAE_Client WHERE id_client = :id");
 $stmt->execute(['id' => $_SESSION['user_id']]);
 $user = $stmt->fetch();
 
-$isAdmin = $_SESSION['is_admin'] ?? false;
-
-$idClient = $_SESSION['user_id'];
-
-$sql = "
-    SELECT 
-        p.id_variete,
-        p.quantite,
-        v.nom,
-        v.prix
-    FROM sae_panier p
-    JOIN sae_variete v ON p.id_variete = v.id_variete
-    WHERE p.id_client = :id_client
-";
+$stmtCat = $cnx->prepare("SELECT id_article FROM sae_article WHERE categorie = :cat");
+$stmtCat->execute([':cat' => $category]);
+$idArticle = $stmtCat->fetchColumn();
 
 
-$stmt = $cnx->prepare($sql);
-$stmt->execute([':id_client' => $idClient]);
-$cartItems = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
+if (!$idArticle) {
+    echo "<p>Catégorie non trouvée.</p>";
+    exit;
+}
+
+$stmtItems = $cnx->prepare("
+    SELECT nom, prix 
+    FROM sae_variete 
+    WHERE id_article = :id_article
+");
+$stmtItems->execute([':id_article' => $idArticle]);
+$items = $stmtItems->fetchAll(PDO::FETCH_ASSOC);
 ?>
+
 
 
 <!DOCTYPE html>
@@ -291,54 +299,71 @@ $cartItems = $stmt->fetchAll(PDO::FETCH_ASSOC);
         </div>
     </header>
 
-    <main>
-       <h2>Votre panier</h2>
-<hr>
+ <?php
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
 
-<?php if (count($cartItems) === 0): ?>
-    <p>Votre panier est vide.</p>
-<?php else: ?>
-    <?php
-    $total = 0;
-    foreach ($cartItems as $item):
-        $total += $item['prix'] * $item['quantite'];
-    ?>
+if (!isset($_GET['cat']) || empty($_GET['cat'])) {
+    echo "<p>Категорія не вибрана.</p>";
+    exit;
+}
+
+$selectedCategory = $_GET['cat'];
+
+try {
+    $stmt = $cnx->prepare("SELECT id_article FROM SAE_Article WHERE categorie = :categorie LIMIT 1");
+    $stmt->execute(['categorie' => $selectedCategory]);
+    $article = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$article) {
+        echo "<p>Категорія \"" . htmlspecialchars($selectedCategory) . "\" не знайдена.</p>";
+        exit;
+    }
+
+    $id_article = $article['id_article'];
+
+    // Вибираємо товари для цієї категорії
+    $stmt_var = $cnx->prepare("SELECT * FROM SAE_Variete WHERE id_article = :id_article");
+    $stmt_var->execute(['id_article' => $id_article]);
+    $products = $stmt_var->fetchAll(PDO::FETCH_ASSOC);
+
+} catch (PDOException $e) {
+    echo "Помилка при виборі даних: " . htmlspecialchars($e->getMessage());
+    exit;
+}
+?>
+
+  <main>
+    <h2><?= htmlspecialchars($selectedCategory) ?></h2>
+    <hr>
+
+    <?php if (count($products) === 0): ?>
+        <p>Aucun produit trouvé pour cette catégorie.</p>
+    <?php else: ?>
         <div class="cart">
-            <div class="item">
-                <img src="img_pp/fraises.jpg" alt="<?= htmlspecialchars($item['nom']) ?>" />
-                <div class="details">
-                    <h3><?= htmlspecialchars($item['nom']) ?></h3>
-                    <p>Prix: <?= number_format($item['prix'], 2) ?> €</p>
+            <?php foreach ($products as $product): ?>
+                <div class="item">
+                    <img src="img_pp/Tomate.jpg" alt="<?= htmlspecialchars($product['nom']) ?>" />
+                    <div class="details">
+                        <h3><?= htmlspecialchars($product['nom']) ?></h3>
+                        <p 
+                            class="panier btn-add-cart" 
+                            data-variete-id="<?= htmlspecialchars($product['id_variete']) ?>"
+                            style="cursor:pointer;"
+                        >
+                        <?= !empty($product['in_cart']) ? 'dans panier' : '+ au panier' ?>
+                        </p>
+                        <p>Prix: <?= number_format($product['prix'], 2) ?> €</p>
+                    </div>
                 </div>
-                <div class="quantity">
-                    <form action="update_quantity.php" method="post" style="display:flex; gap:5px;">
-                        <input type="hidden" name="id_variete" value="<?= $item['id_variete'] ?>">
-                        <button type="submit" name="action" value="decrease">-</button>
-                        <span><?= $item['quantite'] ?></span>
-                        <button type="submit" name="action" value="increase">+</button>
-                    </form>
-                </div>
-                <form action="remove_from_cart.php" method="post">
-                    <input type="hidden" name="id_variete" value="<?= $item['id_variete'] ?>">
-                    <button class="delete" type="submit">Supprimer</button>
-                </form>
-            </div>
+            <?php endforeach; ?>
         </div>
-    <?php endforeach; ?>
+    <?php endif; ?>
+</main>
 
-    <p class="total">Prix total: <?= number_format($total, 2) ?> €</p>
-<?php endif; ?>
 
-        <?php if (count($cartItems) > 0): ?>
-    <form method="POST" action="checkout.php">
-        <button type="submit" name="acheter">Acheter</button>
-    </form>
-<?php endif; ?>
 
-<?php if (isset($_GET['success']) && $_GET['success'] == 1): ?>
-    <p style="color:green;">Commande enregistrée avec succès !</p>
-<?php endif; ?>
-    </main>
     <footer>
         <div class="footer-info">
             <div class="about">
@@ -372,5 +397,34 @@ $cartItems = $stmt->fetchAll(PDO::FETCH_ASSOC);
     </footer>
 
 </body>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const panierButtons = document.querySelectorAll('.btn-add-cart');
 
+    panierButtons.forEach(button => {
+        button.addEventListener('click', function () {
+            const varieteId = this.dataset.varieteId;
+
+            fetch('add_to_panier.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: 'id_variete=' + encodeURIComponent(varieteId)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    this.textContent = 'dans panier';
+                } else {
+                    alert(data.message || 'Erreur lors de l\'ajout au panier');
+                }
+            })
+            .catch(error => {
+                console.error('Erreur AJAX:', error);
+            });
+        });
+    });
+});
+</script>
 </html>
